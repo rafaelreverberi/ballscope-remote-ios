@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import WebKit
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -10,6 +11,7 @@ final class AppModel: ObservableObject {
     @Published var isCheckingConnection = false
     @Published var lastConnectionCheck: Date?
     @Published var showSettings = false
+    @Published var showOnboarding = false
 
     let webRouter = JetsonWebRouter()
 
@@ -34,6 +36,7 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
+        showOnboarding = !settingsStore.hasCompletedOnboarding()
         startConnectionMonitor()
         Task {
             await checkConnectionAndLoadIfNeeded()
@@ -44,6 +47,14 @@ final class AppModel: ObservableObject {
         selectedDestination = destination
         guard destination != .home else { return }
         webRouter.navigate(to: destination)
+    }
+
+    func reloadCurrentScreen() {
+        Task {
+            await checkConnectionAndLoadIfNeeded(forceLoad: true)
+            guard selectedDestination != .home else { return }
+            webRouter.reloadOrNavigate(to: selectedDestination)
+        }
     }
 
     func saveSettings(host: String, port: Int) {
@@ -67,6 +78,25 @@ final class AppModel: ObservableObject {
         webRouter.updateSettings(updated)
     }
 
+    func completeOnboarding() {
+        settingsStore.setCompletedOnboarding(true)
+        showOnboarding = false
+    }
+
+    func resetAppCache() {
+        settingsStore.setCompletedOnboarding(false)
+        settings = .default
+        settingsStore.save(settings)
+        webRouter.updateSettings(settings)
+        showOnboarding = true
+
+        let dataStore = WKWebsiteDataStore.default()
+        let types = WKWebsiteDataStore.allWebsiteDataTypes()
+        dataStore.fetchDataRecords(ofTypes: types) { records in
+            dataStore.removeData(ofTypes: types, for: records) {}
+        }
+    }
+
     var preferredColorScheme: ColorScheme? {
         switch settings.appearance {
         case .system:
@@ -87,7 +117,7 @@ final class AppModel: ObservableObject {
 
         isJetsonReachable = await probeJetson(baseURL: settings.baseURL)
         if isJetsonReachable, (selectedDestination != .home || forceLoad) {
-            webRouter.navigate(to: selectedDestination)
+            webRouter.navigate(to: selectedDestination, force: forceLoad)
         }
     }
 

@@ -4,6 +4,7 @@ struct HomeDashboardView: View {
     let isJetsonReachable: Bool
     let lastConnectionCheck: Date?
     let currentPath: String
+    let onOpenDestination: (AppDestination) -> Void
     let onOpenSettings: () -> Void
 
     var body: some View {
@@ -18,6 +19,7 @@ struct HomeDashboardView: View {
                     .foregroundStyle(.secondary)
 
                 statusCard
+                quickActions
                 statsGrid
 
                 Button(action: onOpenSettings) {
@@ -83,6 +85,45 @@ struct HomeDashboardView: View {
                 symbol: "clock.fill"
             )
         }
+    }
+
+    private var quickActions: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Quick Actions")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                actionCard(for: .record, tint: .red)
+                actionCard(for: .analysis, tint: .blue)
+                actionCard(for: .live, tint: .green)
+            }
+        }
+    }
+
+    private func actionCard(for destination: AppDestination, tint: Color) -> some View {
+        Button {
+            onOpenDestination(destination)
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: destination.iconName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(tint)
+
+                Text(destination.title)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(tint.opacity(0.28), lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private func statTile(title: String, value: String, symbol: String) -> some View {

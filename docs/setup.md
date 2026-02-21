@@ -38,6 +38,6 @@ Then open in browser for sanity check:
 - If app shows “Connect to Jetson Wi-Fi”, ensure iPhone is on Jetson hotspot network.
 - If slug pages do not load, verify backend routes exist:
   - `/record`
-  - `/analyse`
+  - `/analysis`
   - `/live`
 - If endpoint changed, update app settings and retry.

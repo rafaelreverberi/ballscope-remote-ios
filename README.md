@@ -12,7 +12,7 @@ BallScope Remote is a native iOS companion app for the BallScope Jetson system. 
 - Shows a native Home dashboard with connection status and quick stats.
 - Embeds the BallScope UI for:
   - `/record`
-  - `/analyse`
+  - `/analysis`
   - `/live`
 - Keeps app navigation in sync with slug changes coming from the website itself.
 - Exposes host/port settings for alternate Jetson addresses.

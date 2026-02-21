@@ -3,7 +3,7 @@ import Foundation
 enum AppDestination: String, CaseIterable, Identifiable {
     case home
     case record
-    case analyse
+    case analysis
     case live
 
     var id: String { rawValue }
@@ -12,7 +12,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "Home"
         case .record: return "Record"
-        case .analyse: return "Analysis"
+        case .analysis: return "Analysis"
         case .live: return "Live"
         }
     }
@@ -21,7 +21,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "house.fill"
         case .record: return "video.fill"
-        case .analyse: return "chart.line.uptrend.xyaxis"
+        case .analysis: return "chart.line.uptrend.xyaxis"
         case .live: return "dot.radiowaves.left.and.right"
         }
     }
@@ -30,7 +30,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
         switch self {
         case .home: return nil
         case .record: return "/record"
-        case .analyse: return "/analyse"
+        case .analysis: return "/analysis"
         case .live: return "/live"
         }
     }
@@ -45,8 +45,8 @@ enum AppDestination: String, CaseIterable, Identifiable {
         if normalized.hasPrefix("/record") {
             return .record
         }
-        if normalized.hasPrefix("/analyse") || normalized.hasPrefix("/analysis") {
-            return .analyse
+        if normalized.hasPrefix("/analysis") {
+            return .analysis
         }
         if normalized.hasPrefix("/live") {
             return .live

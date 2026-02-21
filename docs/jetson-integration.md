@@ -7,7 +7,7 @@ BallScope Jetson runs as local web server and is reachable at:
 The iOS app assumes these routes:
 - `/` (menu/home on Jetson web UI)
 - `/record`
-- `/analyse`
+- `/analysis`
 - `/live`
 
 ## App <-> Jetson Routing Contract

@@ -5,14 +5,18 @@ struct SettingsSheet: View {
 
     let initialSettings: AppSettings
     let onSave: (String, Int, AppAppearance) -> Void
+    let onResetAppCache: () -> Void
 
     @State private var host: String
     @State private var portText: String
     @State private var appearance: AppAppearance
 
-    init(initialSettings: AppSettings, onSave: @escaping (String, Int, AppAppearance) -> Void) {
+    init(initialSettings: AppSettings,
+         onSave: @escaping (String, Int, AppAppearance) -> Void,
+         onResetAppCache: @escaping () -> Void) {
         self.initialSettings = initialSettings
         self.onSave = onSave
+        self.onResetAppCache = onResetAppCache
         _host = State(initialValue: initialSettings.host)
         _portText = State(initialValue: String(initialSettings.port))
         _appearance = State(initialValue: initialSettings.appearance)
@@ -42,6 +46,19 @@ struct SettingsSheet: View {
                 Section("Info") {
                     Text("Example: jetson.local and port 8000")
                     Text("The app connects over HTTP to the local Jetson hotspot.")
+                }
+
+                Section("App Data") {
+                    Button(role: .destructive) {
+                        onResetAppCache()
+                        dismiss()
+                    } label: {
+                        Label("Reset App Cache", systemImage: "trash")
+                    }
+
+                    Text("This clears local web cache, restores default host/port, and shows onboarding again.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Settings")

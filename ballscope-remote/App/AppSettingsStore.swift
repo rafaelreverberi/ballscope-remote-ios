@@ -50,6 +50,7 @@ struct AppSettings: Codable, Equatable {
 final class AppSettingsStore {
     private let defaults = UserDefaults.standard
     private let key = "ballscope.remote.settings"
+    private let onboardingKey = "ballscope.remote.onboarding.completed"
 
     func load() -> AppSettings {
         guard let data = defaults.data(forKey: key),
@@ -63,5 +64,13 @@ final class AppSettingsStore {
     func save(_ settings: AppSettings) {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         defaults.set(data, forKey: key)
+    }
+
+    func hasCompletedOnboarding() -> Bool {
+        defaults.bool(forKey: onboardingKey)
+    }
+
+    func setCompletedOnboarding(_ completed: Bool) {
+        defaults.set(completed, forKey: onboardingKey)
     }
 }

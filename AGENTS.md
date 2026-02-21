@@ -6,7 +6,7 @@ These instructions apply to the entire `ballscope-remote` repository.
 ## Project Purpose
 Build and maintain a native iOS companion app for BallScope Jetson (`jetson.local:8000`) with:
 - polished native UI
-- embedded web control routes (`/record`, `/analyse`, `/live`)
+- embedded web control routes (`/record`, `/analysis`, `/live`)
 - robust local-network behavior
 
 ## Tech Stack

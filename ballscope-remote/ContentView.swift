@@ -19,10 +19,23 @@ struct ContentView: View {
             .padding(.top, 8)
         }
         .sheet(isPresented: $appModel.showSettings) {
-            SettingsSheet(initialSettings: appModel.settings) { host, port, appearance in
-                appModel.saveSettings(host: host, port: port)
-                appModel.updateAppearance(appearance)
-            }
+            SettingsSheet(
+                initialSettings: appModel.settings,
+                onSave: { host, port, appearance in
+                    appModel.saveSettings(host: host, port: port)
+                    appModel.updateAppearance(appearance)
+                },
+                onResetAppCache: {
+                    appModel.resetAppCache()
+                }
+            )
+        }
+        .fullScreenCover(isPresented: $appModel.showOnboarding) {
+            OnboardingView(
+                onContinue: {
+                    appModel.completeOnboarding()
+                }
+            )
         }
         .preferredColorScheme(appModel.preferredColorScheme)
         .task {
@@ -41,6 +54,17 @@ struct ContentView: View {
             }
 
             Spacer()
+
+            Button {
+                appModel.reloadCurrentScreen()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 34, height: 34)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
 
             Button {
                 appModel.showSettings = true
@@ -65,6 +89,9 @@ struct ContentView: View {
                 isJetsonReachable: appModel.isJetsonReachable,
                 lastConnectionCheck: appModel.lastConnectionCheck,
                 currentPath: appModel.webRouter.currentPath,
+                onOpenDestination: { destination in
+                    appModel.onTabSelected(destination)
+                },
                 onOpenSettings: { appModel.showSettings = true }
             )
         } else {
@@ -111,6 +138,18 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
             .disabled(appModel.isCheckingConnection)
+
+            Button {
+                appModel.showOnboarding = true
+            } label: {
+                Text("Open Setup Guide")
+                    .font(.system(size: 14, weight: .semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.secondary.opacity(0.14))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
         }
         .foregroundStyle(.primary)
         .padding(20)
