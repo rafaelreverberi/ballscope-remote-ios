@@ -3,27 +3,39 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var appModel = AppModel()
 
+    private var isFullscreenWebMode: Bool {
+        appModel.selectedDestination != .home && appModel.isAppFullscreen
+    }
+
     var body: some View {
         ZStack {
             LiquidBackground()
 
             VStack(spacing: 0) {
-                topBar
+                if !isFullscreenWebMode {
+                    topBar
+                }
+
                 content
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                LiquidTabBar(selectedDestination: $appModel.selectedDestination) { destination in
-                    appModel.onTabSelected(destination)
+                if !isFullscreenWebMode {
+                    LiquidTabBar(selectedDestination: $appModel.selectedDestination) { destination in
+                        appModel.onTabSelected(destination)
+                    }
                 }
             }
-            .padding(.top, 8)
+            .padding(.top, isFullscreenWebMode ? 0 : 8)
+
+            if isFullscreenWebMode {
+                fullscreenControls
+            }
         }
         .sheet(isPresented: $appModel.showSettings) {
             SettingsSheet(
                 initialSettings: appModel.settings,
-                onSave: { host, port, appearance in
-                    appModel.saveSettings(host: host, port: port)
-                    appModel.updateAppearance(appearance)
+                onSave: { updatedSettings in
+                    appModel.saveSettings(updatedSettings)
                 },
                 onResetAppCache: {
                     appModel.resetAppCache()
@@ -66,6 +78,19 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
 
+            if appModel.selectedDestination != .home {
+                Button {
+                    appModel.toggleFullscreen()
+                } label: {
+                    Image(systemName: appModel.isAppFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 34, height: 34)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+
             Button {
                 appModel.showSettings = true
             } label: {
@@ -89,27 +114,55 @@ struct ContentView: View {
                 isJetsonReachable: appModel.isJetsonReachable,
                 lastConnectionCheck: appModel.lastConnectionCheck,
                 currentPath: appModel.webRouter.currentPath,
+                pendingSystemAction: appModel.pendingSystemAction,
+                systemPowerFeedback: appModel.systemPowerFeedback,
                 onOpenDestination: { destination in
                     appModel.onTabSelected(destination)
+                },
+                onSystemPowerAction: { action in
+                    appModel.triggerSystemPowerAction(action)
                 },
                 onOpenSettings: { appModel.showSettings = true }
             )
         } else {
             ZStack {
                 JetsonWebView(webView: appModel.webRouter.webView)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: isFullscreenWebMode ? 0 : 24, style: .continuous))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                        if !isFullscreenWebMode {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                        }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
+                    .padding(.horizontal, isFullscreenWebMode ? 0 : 10)
+                    .padding(.top, isFullscreenWebMode ? 0 : 8)
+                    .padding(.bottom, isFullscreenWebMode ? 0 : 4)
 
                 if !appModel.isJetsonReachable {
                     connectionOverlay
                 }
             }
+        }
+    }
+
+    private var fullscreenControls: some View {
+        VStack {
+            HStack {
+                Spacer()
+                Button {
+                    appModel.exitFullscreen()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .frame(width: 36, height: 36)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 10)
+                .padding(.trailing, 12)
+            }
+            Spacer()
         }
     }
 
@@ -121,7 +174,7 @@ struct ContentView: View {
             Text("Connect to Jetson Wi-Fi")
                 .font(.system(size: 18, weight: .bold))
 
-            Text("No device found at \(appModel.settings.host):\(appModel.settings.port).")
+            Text("No device found for \(appModel.settings.activeSystem.displayName) at \(appModel.settings.host):\(appModel.settings.port).")
                 .font(.system(size: 14, weight: .medium))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
@@ -147,6 +200,18 @@ struct ContentView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(Color.secondary.opacity(0.14))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                appModel.reloadCurrentScreen()
+            } label: {
+                Text("Reload Current View")
+                    .font(.system(size: 14, weight: .semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.secondary.opacity(0.10))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)

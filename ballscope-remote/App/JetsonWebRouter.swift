@@ -6,15 +6,17 @@ final class JetsonWebRouter: NSObject, ObservableObject {
     @Published private(set) var currentPath: String = "/"
 
     var onPathChange: ((String) -> Void)?
+    var onFullscreenChange: ((Bool) -> Void)?
 
     let webView: WKWebView
     private var settings: AppSettings = .default
 
     override init() {
+        let userContentController = WKUserContentController()
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.preferredContentMode = .mobile
         config.allowsInlineMediaPlayback = true
-        config.userContentController = Self.makeUserContentController()
+        config.userContentController = userContentController
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.allowsBackForwardNavigationGestures = false
@@ -23,7 +25,10 @@ final class JetsonWebRouter: NSObject, ObservableObject {
 
         super.init()
 
+        Self.configureUserScripts(on: userContentController)
+        userContentController.add(self, name: "ballscopeFullscreen")
         webView.navigationDelegate = self
+        webView.uiDelegate = self
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.pinchGestureRecognizer?.isEnabled = false
         webView.scrollView.bouncesZoom = false
@@ -61,6 +66,28 @@ final class JetsonWebRouter: NSObject, ObservableObject {
         navigate(to: destination, force: true)
     }
 
+    func setDocumentFullscreen(_ enabled: Bool) {
+        let js: String
+        if enabled {
+            js = """
+            (function() {
+              var el = document.documentElement;
+              if (document.fullscreenElement) { return; }
+              if (el.requestFullscreen) { el.requestFullscreen(); }
+              else if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); }
+            })();
+            """
+        } else {
+            js = """
+            (function() {
+              if (document.exitFullscreen && document.fullscreenElement) { document.exitFullscreen(); return; }
+              if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+            })();
+            """
+        }
+        webView.evaluateJavaScript(js)
+    }
+
     private func resolvedURL(path: String) -> URL? {
         var components = URLComponents(url: settings.baseURL, resolvingAgainstBaseURL: false)
         components?.path = normalizedPath(path)
@@ -81,8 +108,7 @@ final class JetsonWebRouter: NSObject, ObservableObject {
         }
     }
 
-    private static func makeUserContentController() -> WKUserContentController {
-        let controller = WKUserContentController()
+    private static func configureUserScripts(on controller: WKUserContentController) {
         let source = """
         (function() {
             var head = document.head || document.getElementsByTagName('head')[0];
@@ -103,12 +129,23 @@ final class JetsonWebRouter: NSObject, ObservableObject {
                 style.innerHTML = 'input, textarea, select { font-size: 16px !important; }';
                 head.appendChild(style);
             }
+
+            function publishFullscreen() {
+                try {
+                    var active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                    window.webkit.messageHandlers.ballscopeFullscreen.postMessage({ active: active });
+                } catch (e) {}
+            }
+
+            document.addEventListener('fullscreenchange', publishFullscreen);
+            document.addEventListener('webkitfullscreenchange', publishFullscreen);
+            window.addEventListener('pageshow', publishFullscreen);
+            setTimeout(publishFullscreen, 0);
         })();
         """
 
         let userScript = WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         controller.addUserScript(userScript)
-        return controller
     }
 }
 
@@ -122,5 +159,17 @@ extension JetsonWebRouter: WKNavigationDelegate {
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         publishPath(from: navigationAction.request.url)
         decisionHandler(.allow)
+    }
+}
+
+extension JetsonWebRouter: WKUIDelegate {}
+
+extension JetsonWebRouter: WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "ballscopeFullscreen" else { return }
+        if let dict = message.body as? [String: Any],
+           let active = dict["active"] as? Bool {
+            onFullscreenChange?(active)
+        }
     }
 }

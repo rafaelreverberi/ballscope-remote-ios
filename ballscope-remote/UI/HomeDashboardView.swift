@@ -4,8 +4,14 @@ struct HomeDashboardView: View {
     let isJetsonReachable: Bool
     let lastConnectionCheck: Date?
     let currentPath: String
+    let pendingSystemAction: AppModel.SystemPowerAction?
+    let systemPowerFeedback: AppModel.SystemPowerFeedback?
     let onOpenDestination: (AppDestination) -> Void
+    let onSystemPowerAction: (AppModel.SystemPowerAction) -> Void
     let onOpenSettings: () -> Void
+
+    @State private var confirmAction: AppModel.SystemPowerAction?
+    @State private var showPowerConfirmation = false
 
     var body: some View {
         ScrollView {
@@ -20,6 +26,7 @@ struct HomeDashboardView: View {
 
                 statusCard
                 quickActions
+                powerActions
                 statsGrid
 
                 Button(action: onOpenSettings) {
@@ -44,6 +51,18 @@ struct HomeDashboardView: View {
             .padding(.bottom, 20)
         }
         .scrollIndicators(.hidden)
+        .confirmationDialog("System Power Action", isPresented: $showPowerConfirmation) {
+            if let action = confirmAction {
+                Button(action.title, role: .destructive) {
+                    onSystemPowerAction(action)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let action = confirmAction {
+                Text("This will \(action == .reboot ? "reboot" : "shut down") the BallScope device.")
+            }
+        }
     }
 
     private var statusCard: some View {
@@ -87,6 +106,30 @@ struct HomeDashboardView: View {
         }
     }
 
+    private var powerActions: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("System Power")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                powerCard(for: .reboot, tint: .orange)
+                powerCard(for: .shutdown, tint: .red)
+            }
+
+            if let feedback = systemPowerFeedback {
+                HStack(spacing: 8) {
+                    Image(systemName: feedback.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    Text(feedback.message)
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(2)
+                }
+                .foregroundStyle(feedback.isError ? .orange : .green)
+                .padding(.horizontal, 4)
+            }
+        }
+    }
+
     private var quickActions: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Quick Actions")
@@ -99,6 +142,42 @@ struct HomeDashboardView: View {
                 actionCard(for: .live, tint: .green)
             }
         }
+    }
+
+    private func powerCard(for action: AppModel.SystemPowerAction, tint: Color) -> some View {
+        Button {
+            confirmAction = action
+            showPowerConfirmation = true
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    if pendingSystemAction == action {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(tint)
+                    } else {
+                        Image(systemName: action.iconName)
+                            .foregroundStyle(tint)
+                    }
+                    Spacer()
+                }
+
+                Text(action == .reboot ? "Reboot" : "Shutdown")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(tint.opacity(0.30), lineWidth: 1)
+            }
+            .opacity(isJetsonReachable ? 1 : 0.65)
+        }
+        .buttonStyle(.plain)
+        .disabled(!isJetsonReachable || pendingSystemAction != nil)
     }
 
     private func actionCard(for destination: AppDestination, tint: Color) -> some View {

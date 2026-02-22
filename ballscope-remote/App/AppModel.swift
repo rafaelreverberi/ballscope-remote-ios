@@ -5,6 +5,39 @@ import WebKit
 
 @MainActor
 final class AppModel: ObservableObject {
+    enum SystemPowerAction: String, Identifiable, CaseIterable {
+        case reboot
+        case shutdown
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .reboot: return "Reboot System"
+            case .shutdown: return "Shutdown System"
+            }
+        }
+
+        var endpointPath: String {
+            switch self {
+            case .reboot: return "/api/system/reboot"
+            case .shutdown: return "/api/system/shutdown"
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .reboot: return "arrow.clockwise.circle.fill"
+            case .shutdown: return "power.circle.fill"
+            }
+        }
+    }
+
+    struct SystemPowerFeedback {
+        let message: String
+        let isError: Bool
+    }
+
     @Published var selectedDestination: AppDestination = .home
     @Published var settings: AppSettings
     @Published var isJetsonReachable = false
@@ -12,6 +45,9 @@ final class AppModel: ObservableObject {
     @Published var lastConnectionCheck: Date?
     @Published var showSettings = false
     @Published var showOnboarding = false
+    @Published var isAppFullscreen = false
+    @Published var pendingSystemAction: SystemPowerAction?
+    @Published var systemPowerFeedback: SystemPowerFeedback?
 
     let webRouter = JetsonWebRouter()
 
@@ -25,8 +61,28 @@ final class AppModel: ObservableObject {
 
         webRouter.onPathChange = { [weak self] path in
             guard let self else { return }
-            if let destination = AppDestination.from(path: path), destination != self.selectedDestination {
+            let normalized = path.hasPrefix("/") ? path : "/\(path)"
+
+            if normalized == "/" {
+                if self.selectedDestination != .home {
+                    self.selectedDestination = .home
+                }
+                self.isAppFullscreen = false
+                return
+            }
+
+            guard let destination = AppDestination.from(path: normalized) else {
+                return
+            }
+
+            if destination != self.selectedDestination {
                 self.selectedDestination = destination
+            }
+        }
+
+        webRouter.onFullscreenChange = { [weak self] active in
+            Task { @MainActor [weak self] in
+                self?.isAppFullscreen = active
             }
         }
     }
@@ -45,7 +101,10 @@ final class AppModel: ObservableObject {
 
     func onTabSelected(_ destination: AppDestination) {
         selectedDestination = destination
-        guard destination != .home else { return }
+        if destination == .home {
+            isAppFullscreen = false
+            return
+        }
         webRouter.navigate(to: destination)
     }
 
@@ -57,11 +116,19 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func saveSettings(host: String, port: Int) {
-        let normalizedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedHost.isEmpty else { return }
+    func toggleFullscreen() {
+        guard selectedDestination != .home else { return }
+        isAppFullscreen.toggle()
+        webRouter.setDocumentFullscreen(isAppFullscreen)
+    }
 
-        let updated = AppSettings(host: normalizedHost, port: port, appearance: settings.appearance)
+    func exitFullscreen() {
+        guard isAppFullscreen else { return }
+        isAppFullscreen = false
+        webRouter.setDocumentFullscreen(false)
+    }
+
+    func saveSettings(_ updated: AppSettings) {
         settings = updated
         settingsStore.save(updated)
         webRouter.updateSettings(updated)
@@ -72,10 +139,7 @@ final class AppModel: ObservableObject {
     }
 
     func updateAppearance(_ appearance: AppAppearance) {
-        let updated = AppSettings(host: settings.host, port: settings.port, appearance: appearance)
-        settings = updated
-        settingsStore.save(updated)
-        webRouter.updateSettings(updated)
+        saveSettings(settings.updatingAppearance(appearance))
     }
 
     func completeOnboarding() {
@@ -118,6 +182,38 @@ final class AppModel: ObservableObject {
         isJetsonReachable = await probeJetson(baseURL: settings.baseURL)
         if isJetsonReachable, (selectedDestination != .home || forceLoad) {
             webRouter.navigate(to: selectedDestination, force: forceLoad)
+        }
+    }
+
+    func triggerSystemPowerAction(_ action: SystemPowerAction) {
+        Task { await performSystemPowerAction(action) }
+    }
+
+    private func performSystemPowerAction(_ action: SystemPowerAction) async {
+        pendingSystemAction = action
+        systemPowerFeedback = nil
+        defer { pendingSystemAction = nil }
+
+        var url = settings.baseURL
+        url.append(path: action.endpointPath)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 4
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            if (200..<300).contains(status) {
+                let apiMessage = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["note"] as? String
+                let defaultMessage = action == .reboot ? "Reboot scheduled." : "Shutdown scheduled."
+                systemPowerFeedback = .init(message: apiMessage ?? defaultMessage, isError: false)
+            } else {
+                systemPowerFeedback = .init(message: "Request failed (\(status)).", isError: true)
+            }
+        } catch {
+            systemPowerFeedback = .init(message: "Power request failed. Check connection and try again.", isError: true)
         }
     }
 

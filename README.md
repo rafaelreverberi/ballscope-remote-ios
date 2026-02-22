@@ -15,7 +15,10 @@ BallScope Remote is a native iOS companion app for the BallScope Jetson system. 
   - `/analysis`
   - `/live`
 - Keeps app navigation in sync with slug changes coming from the website itself.
-- Exposes host/port settings for alternate Jetson addresses.
+- Redirects the Jetson root route (`/`) back to the native Home screen.
+- Supports native fullscreen mode for embedded Jetson web pages.
+- Includes Home actions for system reboot and shutdown (via Jetson API endpoints).
+- Lets you save multiple BallScope systems (host/port) and choose the active one.
 - Includes appearance mode settings (`System`, `Light`, `Dark`).
 
 ## Design Goals
@@ -37,11 +40,11 @@ Default endpoint:
 - `http://jetson.local:8000`
 
 Change endpoint in app:
-- Home -> `Settings`
+- Home -> `Settings` (add/select BallScope systems)
 
 ## App Architecture (Summary)
 - `ballscope-remote/App/`
-  - app state, endpoint settings persistence, navigation model, and connection checks
+  - app state, multi-system settings persistence, navigation model, and connection checks
 - `ballscope-remote/UI/`
   - native home screen, custom liquid tab bar, and embedded `WKWebView`
 - `docs/`

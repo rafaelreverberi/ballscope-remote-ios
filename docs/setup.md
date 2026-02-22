@@ -22,7 +22,9 @@ If your Jetson uses another address:
 1. Open app
 2. Go to `Home`
 3. Open `Settings`
-4. Update `Host` and `Port`
+4. Add or edit a BallScope system
+5. Set the correct `Host` and `Port`
+6. Select it as the active system
 
 ## 5) Jetson Side
 Ensure the BallScope service is running on the Jetson:
@@ -40,4 +42,5 @@ Then open in browser for sanity check:
   - `/record`
   - `/analysis`
   - `/live`
-- If endpoint changed, update app settings and retry.
+- The app intentionally opens native Home (not embedded web menu) when Jetson navigates to `/`.
+- If endpoint changed, update the active BallScope system in app settings and retry.
