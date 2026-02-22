@@ -60,7 +60,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(appModel.selectedDestination.title)
                     .font(.system(size: 20, weight: .bold, design: .rounded))
-                Text(appModel.isJetsonReachable ? "Jetson Online" : "Jetson Offline")
+                Text(appModel.isJetsonReachable ? "BallScope System Online" : "BallScope System Offline")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -171,7 +171,7 @@ struct ContentView: View {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 26, weight: .semibold))
 
-            Text("Connect to Jetson Wi-Fi")
+            Text("Connect to BallScope Wi-Fi")
                 .font(.system(size: 18, weight: .bold))
 
             Text("No device found for \(appModel.settings.activeSystem.displayName) at \(appModel.settings.host):\(appModel.settings.port).")

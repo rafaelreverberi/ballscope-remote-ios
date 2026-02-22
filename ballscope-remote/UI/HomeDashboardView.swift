@@ -20,7 +20,7 @@ struct HomeDashboardView: View {
                     .font(.system(size: 38, weight: .bold, design: .rounded))
                     .foregroundStyle(.primary)
 
-                Text("Control your Jetson directly from iPhone with a native interface.")
+                Text("Control your BallScope System directly from iPhone with a native interface.")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.secondary)
 
@@ -71,12 +71,12 @@ struct HomeDashboardView: View {
                 Circle()
                     .fill(isJetsonReachable ? Color.green : Color.orange)
                     .frame(width: 11, height: 11)
-                Text(isJetsonReachable ? "Jetson reachable" : "Jetson unreachable")
+                Text(isJetsonReachable ? "BallScope System reachable" : "BallScope System unreachable")
                     .font(.system(size: 16, weight: .semibold))
                 Spacer()
             }
 
-            Text(isJetsonReachable ? "Open Record, Analysis, or Live instantly." : "Connect to the Jetson Wi-Fi network and try again.")
+            Text(isJetsonReachable ? "Open Record, Analysis, or Live instantly." : "Connect to the BallScope Wi-Fi network and try again.")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.secondary)
         }

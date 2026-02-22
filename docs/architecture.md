@@ -56,6 +56,7 @@ Result: app tab state stays consistent even when website changes route on its ow
 ## Fullscreen Behavior
 - Web fullscreen requests are mirrored into an app-native fullscreen presentation (top bar and tab bar hidden).
 - Users can also toggle fullscreen from the app chrome when on a web route.
+- Web media fullscreen / picture-in-picture style states (e.g. camera stream viewers) are also mirrored when exposed via browser media/fullscreen APIs.
 
 ## Power Controls
 - Home screen can call Jetson power endpoints (`/api/system/reboot`, `/api/system/shutdown`).

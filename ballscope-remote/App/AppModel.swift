@@ -85,6 +85,12 @@ final class AppModel: ObservableObject {
                 self?.isAppFullscreen = active
             }
         }
+
+        webRouter.onFullscreenToggleRequest = { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.toggleFullscreen()
+            }
+        }
     }
 
     deinit {

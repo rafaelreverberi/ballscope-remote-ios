@@ -7,6 +7,7 @@ final class JetsonWebRouter: NSObject, ObservableObject {
 
     var onPathChange: ((String) -> Void)?
     var onFullscreenChange: ((Bool) -> Void)?
+    var onFullscreenToggleRequest: (() -> Void)?
 
     let webView: WKWebView
     private var settings: AppSettings = .default
@@ -16,6 +17,7 @@ final class JetsonWebRouter: NSObject, ObservableObject {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.preferredContentMode = .mobile
         config.allowsInlineMediaPlayback = true
+        config.allowsPictureInPictureMediaPlayback = true
         config.userContentController = userContentController
 
         webView = WKWebView(frame: .zero, configuration: config)
@@ -27,6 +29,7 @@ final class JetsonWebRouter: NSObject, ObservableObject {
 
         Self.configureUserScripts(on: userContentController)
         userContentController.add(self, name: "ballscopeFullscreen")
+        userContentController.add(self, name: "ballscopeFullscreenToggleRequest")
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.scrollView.contentInsetAdjustmentBehavior = .never
@@ -71,6 +74,11 @@ final class JetsonWebRouter: NSObject, ObservableObject {
         if enabled {
             js = """
             (function() {
+              try {
+                if (window.__ballscopeSetAppFullscreen) { window.__ballscopeSetAppFullscreen(true); }
+              } catch (e) {}
+              var liveStage = document.getElementById('liveStage');
+              if (liveStage) { return; } // App-only fullscreen fallback for BallScope live image stream
               var el = document.documentElement;
               if (document.fullscreenElement) { return; }
               if (el.requestFullscreen) { el.requestFullscreen(); }
@@ -80,6 +88,22 @@ final class JetsonWebRouter: NSObject, ObservableObject {
         } else {
             js = """
             (function() {
+              try {
+                if (document.exitPictureInPicture && document.pictureInPictureElement) {
+                  document.exitPictureInPicture();
+                }
+              } catch (e) {}
+              var videos = document.querySelectorAll('video');
+              videos.forEach(function(v) {
+                try {
+                  if (v.webkitSetPresentationMode) {
+                    v.webkitSetPresentationMode('inline');
+                  }
+                } catch (e) {}
+              });
+              try {
+                if (window.__ballscopeSetAppFullscreen) { window.__ballscopeSetAppFullscreen(false); }
+              } catch (e) {}
               if (document.exitFullscreen && document.fullscreenElement) { document.exitFullscreen(); return; }
               if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
             })();
@@ -130,17 +154,109 @@ final class JetsonWebRouter: NSObject, ObservableObject {
                 head.appendChild(style);
             }
 
+            var fullscreenStyleId = 'ballscope-ios-live-fullscreen-fallback';
+            if (!document.getElementById(fullscreenStyleId)) {
+                var fullscreenStyle = document.createElement('style');
+                fullscreenStyle.id = fullscreenStyleId;
+                fullscreenStyle.innerHTML =
+                  'html.ballscope-app-fs, body.ballscope-app-fs { overflow:hidden !important; background:#000 !important; height:100% !important; }' +
+                  '#liveStage.ballscope-app-force-fullscreen { position:fixed !important; inset:0 !important; width:100vw !important; height:100dvh !important; z-index:2147483646 !important; margin:0 !important; padding:0 !important; border-radius:0 !important; border:none !important; background:#000 !important; }' +
+                  '#liveStage.ballscope-app-force-fullscreen .frame { width:100% !important; height:100% !important; border:none !important; border-radius:0 !important; background:#000 !important; }' +
+                  '#liveStage.ballscope-app-force-fullscreen .frame.main { aspect-ratio:auto !important; min-height:100dvh !important; }' +
+                  '#liveStage.ballscope-app-force-fullscreen img#liveMainImg { width:100% !important; height:100% !important; max-width:none !important; max-height:none !important; object-fit:contain !important; background:#000 !important; }' +
+                  '#liveStage.ballscope-app-force-fullscreen .label-chip { z-index:2147483647 !important; }';
+                head.appendChild(fullscreenStyle);
+            }
+
+            window.__ballscopeSetAppFullscreen = function(active) {
+                try {
+                    document.documentElement.classList.toggle('ballscope-app-fs', !!active);
+                    if (document.body) document.body.classList.toggle('ballscope-app-fs', !!active);
+                    var stage = document.getElementById('liveStage');
+                    if (stage) stage.classList.toggle('ballscope-app-force-fullscreen', !!active);
+                } catch (e) {}
+            };
+
+            var lastFullscreenState = null;
+
+            function computeFullscreenState() {
+                var domFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                var pipActive = !!document.pictureInPictureElement;
+                var appForced = !!(document.documentElement && document.documentElement.classList && document.documentElement.classList.contains('ballscope-app-fs'));
+                var webkitVideoPresentation = false;
+                try {
+                    var videos = document.querySelectorAll('video');
+                    for (var i = 0; i < videos.length; i++) {
+                        var v = videos[i];
+                        if (v.webkitDisplayingFullscreen) {
+                            webkitVideoPresentation = true;
+                            break;
+                        }
+                        if (v.webkitPresentationMode && v.webkitPresentationMode !== 'inline') {
+                            webkitVideoPresentation = true;
+                            break;
+                        }
+                    }
+                } catch (e) {}
+                return domFullscreen || pipActive || webkitVideoPresentation || appForced;
+            }
+
             function publishFullscreen() {
                 try {
-                    var active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                    var active = computeFullscreenState();
+                    if (lastFullscreenState === active) { return; }
+                    lastFullscreenState = active;
                     window.webkit.messageHandlers.ballscopeFullscreen.postMessage({ active: active });
+                } catch (e) {}
+            }
+
+            function requestAppFullscreenToggle(ev) {
+                try {
+                    if (ev) {
+                        if (ev.preventDefault) ev.preventDefault();
+                        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+                        if (ev.stopPropagation) ev.stopPropagation();
+                    }
+                    window.webkit.messageHandlers.ballscopeFullscreenToggleRequest.postMessage({});
+                } catch (e) {}
+                return false;
+            }
+
+            function patchLiveFullscreenButton() {
+                try {
+                    var btn = document.getElementById('fsBtn');
+                    if (!btn) { return; }
+                    if (btn.__ballscopeFsPatched) { return; }
+                    btn.__ballscopeFsPatched = true;
+
+                    // Replace page handler so WKWebView doesn't run the site's requestFullscreen path.
+                    btn.onclick = requestAppFullscreenToggle;
+                    btn.addEventListener('click', requestAppFullscreenToggle, true);
                 } catch (e) {}
             }
 
             document.addEventListener('fullscreenchange', publishFullscreen);
             document.addEventListener('webkitfullscreenchange', publishFullscreen);
+            document.addEventListener('enterpictureinpicture', publishFullscreen, true);
+            document.addEventListener('leavepictureinpicture', publishFullscreen, true);
+            document.addEventListener('webkitbeginfullscreen', publishFullscreen, true);
+            document.addEventListener('webkitendfullscreen', publishFullscreen, true);
+            document.addEventListener('click', function(ev) {
+                try {
+                    var target = ev.target;
+                    var btn = target && target.closest ? target.closest('#fsBtn') : null;
+                    if (!btn) { return; }
+                    requestAppFullscreenToggle(ev);
+                } catch (e) {}
+            }, true);
             window.addEventListener('pageshow', publishFullscreen);
+            document.addEventListener('visibilitychange', publishFullscreen);
+            patchLiveFullscreenButton();
             setTimeout(publishFullscreen, 0);
+            setTimeout(patchLiveFullscreenButton, 0);
+            setTimeout(patchLiveFullscreenButton, 300);
+            setInterval(publishFullscreen, 600);
+            setInterval(patchLiveFullscreenButton, 1000);
         })();
         """
 
@@ -166,10 +282,16 @@ extension JetsonWebRouter: WKUIDelegate {}
 
 extension JetsonWebRouter: WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "ballscopeFullscreen" else { return }
-        if let dict = message.body as? [String: Any],
-           let active = dict["active"] as? Bool {
-            onFullscreenChange?(active)
+        if message.name == "ballscopeFullscreen" {
+            if let dict = message.body as? [String: Any],
+               let active = dict["active"] as? Bool {
+                onFullscreenChange?(active)
+            }
+            return
+        }
+
+        if message.name == "ballscopeFullscreenToggleRequest" {
+            onFullscreenToggleRequest?()
         }
     }
 }
