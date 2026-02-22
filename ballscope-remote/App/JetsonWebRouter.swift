@@ -8,6 +8,7 @@ final class JetsonWebRouter: NSObject, ObservableObject {
     var onPathChange: ((String) -> Void)?
     var onFullscreenChange: ((Bool) -> Void)?
     var onFullscreenToggleRequest: (() -> Void)?
+    var onNativeStreamFullscreenRequest: ((URL, String?, Bool) -> Void)?
 
     let webView: WKWebView
     private var settings: AppSettings = .default
@@ -30,6 +31,7 @@ final class JetsonWebRouter: NSObject, ObservableObject {
         Self.configureUserScripts(on: userContentController)
         userContentController.add(self, name: "ballscopeFullscreen")
         userContentController.add(self, name: "ballscopeFullscreenToggleRequest")
+        userContentController.add(self, name: "ballscopeNativeStreamFullscreen")
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.scrollView.contentInsetAdjustmentBehavior = .never
@@ -222,6 +224,32 @@ final class JetsonWebRouter: NSObject, ObservableObject {
                 return false;
             }
 
+            function requestNativeStreamFullscreen(ev) {
+                try {
+                    if (ev) {
+                        if (ev.preventDefault) ev.preventDefault();
+                        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+                        if (ev.stopPropagation) ev.stopPropagation();
+                    }
+                    var img = document.getElementById('liveMainImg');
+                    if (!img || !img.src) {
+                        return requestAppFullscreenToggle(ev);
+                    }
+                    var label = '';
+                    var labelEl = document.getElementById('previewLabel');
+                    if (labelEl && labelEl.textContent) label = labelEl.textContent;
+                    var fit = !!(img.classList && img.classList.contains('fit'));
+                    window.webkit.messageHandlers.ballscopeNativeStreamFullscreen.postMessage({
+                        src: img.src,
+                        label: label,
+                        fit: fit
+                    });
+                } catch (e) {
+                    return requestAppFullscreenToggle(ev);
+                }
+                return false;
+            }
+
             function patchLiveFullscreenButton() {
                 try {
                     var btn = document.getElementById('fsBtn');
@@ -230,8 +258,8 @@ final class JetsonWebRouter: NSObject, ObservableObject {
                     btn.__ballscopeFsPatched = true;
 
                     // Replace page handler so WKWebView doesn't run the site's requestFullscreen path.
-                    btn.onclick = requestAppFullscreenToggle;
-                    btn.addEventListener('click', requestAppFullscreenToggle, true);
+                    btn.onclick = requestNativeStreamFullscreen;
+                    btn.addEventListener('click', requestNativeStreamFullscreen, true);
                 } catch (e) {}
             }
 
@@ -246,7 +274,7 @@ final class JetsonWebRouter: NSObject, ObservableObject {
                     var target = ev.target;
                     var btn = target && target.closest ? target.closest('#fsBtn') : null;
                     if (!btn) { return; }
-                    requestAppFullscreenToggle(ev);
+                    requestNativeStreamFullscreen(ev);
                 } catch (e) {}
             }, true);
             window.addEventListener('pageshow', publishFullscreen);
@@ -292,6 +320,28 @@ extension JetsonWebRouter: WKScriptMessageHandler {
 
         if message.name == "ballscopeFullscreenToggleRequest" {
             onFullscreenToggleRequest?()
+            return
         }
+
+        if message.name == "ballscopeNativeStreamFullscreen" {
+            guard let dict = message.body as? [String: Any],
+                  let src = dict["src"] as? String,
+                  let url = resolvedMessageURL(from: src)
+            else { return }
+
+            let label = dict["label"] as? String
+            let fit = (dict["fit"] as? Bool) ?? true
+            onNativeStreamFullscreenRequest?(url, label, fit)
+        }
+    }
+
+    private func resolvedMessageURL(from src: String) -> URL? {
+        if let absolute = URL(string: src), absolute.scheme != nil {
+            return absolute
+        }
+        if let base = webView.url {
+            return URL(string: src, relativeTo: base)?.absoluteURL
+        }
+        return nil
     }
 }

@@ -4,7 +4,7 @@ struct ContentView: View {
     @StateObject private var appModel = AppModel()
 
     private var isFullscreenWebMode: Bool {
-        appModel.selectedDestination != .home && appModel.isAppFullscreen
+        appModel.selectedDestination != .home && (appModel.isAppFullscreen || appModel.nativeStreamFullscreenSession != nil)
     }
 
     var body: some View {
@@ -28,7 +28,15 @@ struct ContentView: View {
             .padding(.top, isFullscreenWebMode ? 0 : 8)
 
             if isFullscreenWebMode {
-                fullscreenControls
+                if appModel.nativeStreamFullscreenSession == nil {
+                    fullscreenControls
+                }
+            }
+
+            if let streamSession = appModel.nativeStreamFullscreenSession {
+                NativeStreamFullscreenView(session: streamSession) {
+                    appModel.closeNativeStreamFullscreen()
+                }
             }
         }
         .sheet(isPresented: $appModel.showSettings) {

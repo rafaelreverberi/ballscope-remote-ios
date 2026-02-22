@@ -5,6 +5,13 @@ import WebKit
 
 @MainActor
 final class AppModel: ObservableObject {
+    struct NativeStreamFullscreenSession: Identifiable, Equatable {
+        let id = UUID()
+        let url: URL
+        let title: String?
+        let fitContain: Bool
+    }
+
     enum SystemPowerAction: String, Identifiable, CaseIterable {
         case reboot
         case shutdown
@@ -46,6 +53,7 @@ final class AppModel: ObservableObject {
     @Published var showSettings = false
     @Published var showOnboarding = false
     @Published var isAppFullscreen = false
+    @Published var nativeStreamFullscreenSession: NativeStreamFullscreenSession?
     @Published var pendingSystemAction: SystemPowerAction?
     @Published var systemPowerFeedback: SystemPowerFeedback?
 
@@ -91,6 +99,12 @@ final class AppModel: ObservableObject {
                 self?.toggleFullscreen()
             }
         }
+
+        webRouter.onNativeStreamFullscreenRequest = { [weak self] url, title, fit in
+            Task { @MainActor [weak self] in
+                self?.toggleNativeStreamFullscreen(url: url, title: title, fitContain: fit)
+            }
+        }
     }
 
     deinit {
@@ -125,13 +139,20 @@ final class AppModel: ObservableObject {
     func toggleFullscreen() {
         guard selectedDestination != .home else { return }
         isAppFullscreen.toggle()
-        webRouter.setDocumentFullscreen(isAppFullscreen)
     }
 
     func exitFullscreen() {
+        if nativeStreamFullscreenSession != nil {
+            closeNativeStreamFullscreen()
+            return
+        }
         guard isAppFullscreen else { return }
         isAppFullscreen = false
         webRouter.setDocumentFullscreen(false)
+    }
+
+    func closeNativeStreamFullscreen() {
+        nativeStreamFullscreenSession = nil
     }
 
     func saveSettings(_ updated: AppSettings) {
@@ -221,6 +242,14 @@ final class AppModel: ObservableObject {
         } catch {
             systemPowerFeedback = .init(message: "Power request failed. Check connection and try again.", isError: true)
         }
+    }
+
+    private func toggleNativeStreamFullscreen(url: URL, title: String?, fitContain: Bool) {
+        if nativeStreamFullscreenSession != nil {
+            closeNativeStreamFullscreen()
+            return
+        }
+        nativeStreamFullscreenSession = NativeStreamFullscreenSession(url: url, title: title, fitContain: fitContain)
     }
 
     private func startConnectionMonitor() {
