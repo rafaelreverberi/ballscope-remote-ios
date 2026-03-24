@@ -20,10 +20,12 @@ It combines:
 - `ballscope-remote/UI/HomeDashboardView.swift`
   - native dashboard for status, stats, and settings access
 - `ballscope-remote/UI/LiquidTabBar.swift`
-  - app-level bottom navigation (`Home`, `Record`, `Analysis`, `Live`)
+  - app-level bottom navigation (`Home`, `Record`, `Analysis`, `Live`, `Camera Settings`)
+- `ballscope-remote/App/AppShortcutCenter.swift`
+  - configures iOS Home Screen quick actions and routes them back into native app state
 
 ## Navigation Strategy
-1. User taps an app tab (`Record`, `Analysis`, `Live`).
+1. User taps an app tab (`Record`, `Analysis`, `Live`, `Camera Settings`) or launches an iOS quick action.
 2. App maps destination to slug and loads Jetson URL.
 3. If website navigation changes slug internally, `WKNavigationDelegate` reads path.
 4. Path is mapped back to app destination and updates selected tab.

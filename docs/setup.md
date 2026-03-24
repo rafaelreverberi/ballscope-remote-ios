@@ -42,5 +42,6 @@ Then open in browser for sanity check:
   - `/record`
   - `/analysis`
   - `/live`
+  - `/camera-settings`
 - The app intentionally opens native Home (not embedded web menu) when Jetson navigates to `/`.
 - If endpoint changed, update the active BallScope system in app settings and retry.

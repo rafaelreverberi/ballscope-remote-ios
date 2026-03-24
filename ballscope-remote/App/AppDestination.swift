@@ -5,6 +5,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
     case record
     case analysis
     case live
+    case cameraSettings
 
     var id: String { rawValue }
 
@@ -14,6 +15,16 @@ enum AppDestination: String, CaseIterable, Identifiable {
         case .record: return "Record"
         case .analysis: return "Analysis"
         case .live: return "Live"
+        case .cameraSettings: return "Camera Settings"
+        }
+    }
+
+    var tabTitle: String {
+        switch self {
+        case .cameraSettings:
+            return "Settings"
+        default:
+            return title
         }
     }
 
@@ -23,6 +34,7 @@ enum AppDestination: String, CaseIterable, Identifiable {
         case .record: return "video.fill"
         case .analysis: return "chart.line.uptrend.xyaxis"
         case .live: return "dot.radiowaves.left.and.right"
+        case .cameraSettings: return "gearshape.fill"
         }
     }
 
@@ -32,7 +44,31 @@ enum AppDestination: String, CaseIterable, Identifiable {
         case .record: return "/record"
         case .analysis: return "/analysis"
         case .live: return "/live"
+        case .cameraSettings: return "/camera-settings"
         }
+    }
+
+    var shortcutType: String {
+        "com.ballscope.remote.\(rawValue)"
+    }
+
+    var shortcutSubtitle: String? {
+        switch self {
+        case .record:
+            return "Open Jetson recording controls"
+        case .analysis:
+            return "Open Jetson analysis controls"
+        case .live:
+            return "Open Jetson live controls"
+        case .cameraSettings:
+            return "Open Jetson camera settings"
+        case .home:
+            return nil
+        }
+    }
+
+    static var shortcutDestinations: [AppDestination] {
+        [.record, .analysis, .live, .cameraSettings]
     }
 
     static func from(path: String?) -> AppDestination? {
@@ -51,6 +87,16 @@ enum AppDestination: String, CaseIterable, Identifiable {
         if normalized.hasPrefix("/live") {
             return .live
         }
+        if normalized.hasPrefix("/camera-settings") {
+            return .cameraSettings
+        }
         return nil
+    }
+
+    init?(shortcutType: String) {
+        guard let destination = Self.shortcutDestinations.first(where: { $0.shortcutType == shortcutType }) else {
+            return nil
+        }
+        self = destination
     }
 }

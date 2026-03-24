@@ -15,7 +15,7 @@ struct LiquidTabBar: View {
                     VStack(spacing: 4) {
                         Image(systemName: destination.iconName)
                             .font(.system(size: 15, weight: .semibold))
-                        Text(destination.title)
+                        Text(destination.tabTitle)
                             .font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundStyle(selectedDestination == destination ? activeForeground : inactiveForeground)

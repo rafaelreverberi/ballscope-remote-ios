@@ -9,9 +9,11 @@ The iOS app assumes these routes:
 - `/record`
 - `/analysis`
 - `/live`
+- `/camera-settings`
 
 ## App <-> Jetson Routing Contract
 - Native tab selection maps to route slug and opens it in embedded `WKWebView`.
+- iOS Home Screen quick actions can also open the same native destinations directly.
 - If user navigates inside Jetson web UI, app watches URL updates and syncs selected tab.
 
 ## Connectivity Contract

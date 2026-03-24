@@ -13,6 +13,11 @@ struct HomeDashboardView: View {
     @State private var confirmAction: AppModel.SystemPowerAction?
     @State private var showPowerConfirmation = false
 
+    private let quickActionColumns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10)
+    ]
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -76,7 +81,7 @@ struct HomeDashboardView: View {
                 Spacer()
             }
 
-            Text(isJetsonReachable ? "Open Record, Analysis, or Live instantly." : "Connect to the BallScope Wi-Fi network and try again.")
+            Text(isJetsonReachable ? "Open Record, Analysis, Live, or Camera Settings instantly." : "Connect to the BallScope Wi-Fi network and try again.")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.secondary)
         }
@@ -136,10 +141,11 @@ struct HomeDashboardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 10) {
+            LazyVGrid(columns: quickActionColumns, spacing: 10) {
                 actionCard(for: .record, tint: .red)
                 actionCard(for: .analysis, tint: .blue)
                 actionCard(for: .live, tint: .green)
+                actionCard(for: .cameraSettings, tint: .orange)
             }
         }
     }

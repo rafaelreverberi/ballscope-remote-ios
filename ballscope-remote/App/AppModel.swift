@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 import WebKit
+import UIKit
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -112,6 +113,7 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
+        AppShortcutCenter.shared.configureShortcutItems()
         showOnboarding = !settingsStore.hasCompletedOnboarding()
         startConnectionMonitor()
         Task {
@@ -126,6 +128,13 @@ final class AppModel: ObservableObject {
             return
         }
         webRouter.navigate(to: destination)
+    }
+
+    func handleShortcutNavigation(to destination: AppDestination) {
+        onTabSelected(destination)
+        Task {
+            await checkConnectionAndLoadIfNeeded(forceLoad: true)
+        }
     }
 
     func reloadCurrentScreen() {

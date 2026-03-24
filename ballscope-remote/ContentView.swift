@@ -1,7 +1,9 @@
 import SwiftUI
+import Combine
 
 struct ContentView: View {
     @StateObject private var appModel = AppModel()
+    @ObservedObject private var shortcutCenter = AppShortcutCenter.shared
 
     private var isFullscreenWebMode: Bool {
         appModel.selectedDestination != .home && (appModel.isAppFullscreen || appModel.nativeStreamFullscreenSession != nil)
@@ -60,6 +62,10 @@ struct ContentView: View {
         .preferredColorScheme(appModel.preferredColorScheme)
         .task {
             appModel.start()
+        }
+        .onReceive(shortcutCenter.$requestedDestination.compactMap { $0 }) { destination in
+            appModel.handleShortcutNavigation(to: destination)
+            shortcutCenter.consumeRequest()
         }
     }
 

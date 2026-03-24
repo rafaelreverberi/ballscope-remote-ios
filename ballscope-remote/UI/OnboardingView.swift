@@ -33,7 +33,7 @@ struct OnboardingView: View {
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .multilineTextAlignment(.center)
 
-            Text("Use quick native controls while Jetson handles recording, analysis, and live stream in the background.")
+            Text("Use quick native controls while Jetson handles recording, analysis, live stream, and camera settings in the background.")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -91,7 +91,7 @@ struct OnboardingView: View {
             Text("You're ready")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
 
-            Text("If Jetson is online on `jetson.local:8000`, jump into Record, Analysis, or Live from the Home shortcuts.")
+            Text("If Jetson is online on `jetson.local:8000`, jump into Record, Analysis, Live, or Camera Settings from the Home shortcuts.")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

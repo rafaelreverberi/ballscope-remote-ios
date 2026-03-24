@@ -128,7 +128,7 @@ struct SettingsSheet: View {
         } header: {
             Text("BallScope Systems")
         } footer: {
-            Text("Select the active system used by Record, Analysis, and Live.")
+            Text("Select the active system used by Record, Analysis, Live, and Camera Settings.")
         }
     }
 
@@ -363,4 +363,3 @@ private struct BallScopeSystemEditorSheet: View {
         dismiss()
     }
 }
-
