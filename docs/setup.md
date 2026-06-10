@@ -18,6 +18,8 @@ open ballscope-remote.xcodeproj
 Default endpoint is:
 - `http://jetson.local:8000`
 
+iOS may show a local-network permission prompt the first time the app checks or opens the Jetson endpoint. Allow it so the app can reach `jetson.local` on the hotspot/LAN.
+
 If your Jetson uses another address:
 1. Open app
 2. Go to `Home`
@@ -38,6 +40,7 @@ Then open in browser for sanity check:
 
 ## Troubleshooting
 - If app shows “Connect to Jetson Wi-Fi”, ensure iPhone is on Jetson hotspot network.
+- If iOS local-network permission was denied, enable it again in iOS Settings for BallScope.
 - If slug pages do not load, verify backend routes exist:
   - `/record`
   - `/analysis`

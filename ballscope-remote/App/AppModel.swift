@@ -3,6 +3,7 @@ import SwiftUI
 import Combine
 import WebKit
 import UIKit
+import OSLog
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -64,6 +65,7 @@ final class AppModel: ObservableObject {
     private var monitorTask: Task<Void, Never>?
 
     init() {
+        AppLogger.startup.notice("AppModel init begin")
         let loadedSettings = settingsStore.load()
         settings = loadedSettings
         webRouter.updateSettings(loadedSettings)
@@ -106,6 +108,7 @@ final class AppModel: ObservableObject {
                 self?.toggleNativeStreamFullscreen(url: url, title: title, fitContain: fit)
             }
         }
+        AppLogger.startup.notice("AppModel init complete")
     }
 
     deinit {
@@ -113,12 +116,14 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
+        AppLogger.startup.notice("AppModel start begin")
         AppShortcutCenter.shared.configureShortcutItems()
         showOnboarding = !settingsStore.hasCompletedOnboarding()
         startConnectionMonitor()
         Task {
             await checkConnectionAndLoadIfNeeded()
         }
+        AppLogger.startup.notice("AppModel start complete")
     }
 
     func onTabSelected(_ destination: AppDestination) {
@@ -262,6 +267,7 @@ final class AppModel: ObservableObject {
     }
 
     private func startConnectionMonitor() {
+        AppLogger.startup.notice("Starting connection monitor")
         monitorTask?.cancel()
         monitorTask = Task { [weak self] in
             guard let self else { return }
@@ -273,6 +279,7 @@ final class AppModel: ObservableObject {
     }
 
     private func probeJetson(baseURL: URL) async -> Bool {
+        AppLogger.networking.notice("Probe Jetson begin: \(baseURL.absoluteString, privacy: .public)")
         var request = URLRequest(url: baseURL)
         request.timeoutInterval = 2
         request.cachePolicy = .reloadIgnoringLocalCacheData
@@ -280,10 +287,14 @@ final class AppModel: ObservableObject {
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
-                return (200..<500).contains(httpResponse.statusCode)
+                let reachable = (200..<500).contains(httpResponse.statusCode)
+                AppLogger.networking.notice("Probe Jetson response: \(httpResponse.statusCode, privacy: .public), reachable: \(reachable, privacy: .public)")
+                return reachable
             }
+            AppLogger.networking.notice("Probe Jetson non-HTTP response")
             return true
         } catch {
+            AppLogger.networking.error("Probe Jetson failed: \(error.localizedDescription, privacy: .public)")
             return false
         }
     }

@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import Combine
+import OSLog
 
 @MainActor
 final class AppShortcutCenter: ObservableObject {
@@ -11,14 +12,21 @@ final class AppShortcutCenter: ObservableObject {
     private init() {}
 
     func configureShortcutItems() {
+        AppLogger.startup.notice("Configuring home screen quick actions")
         UIApplication.shared.shortcutItems = AppDestination.shortcutDestinations.map { destination in
-            UIApplicationShortcutItem(
+            let icon = UIImage(systemName: destination.iconName).map { _ in
+                UIApplicationShortcutIcon(systemImageName: destination.iconName)
+            }
+
+            return UIApplicationShortcutItem(
                 type: destination.shortcutType,
                 localizedTitle: destination.title,
                 localizedSubtitle: destination.shortcutSubtitle,
-                icon: UIApplicationShortcutIcon(systemImageName: destination.iconName)
+                icon: icon,
+                userInfo: nil
             )
         }
+        AppLogger.startup.notice("Home screen quick actions configured")
     }
 
     func requestShortcut(type: String) {
@@ -37,6 +45,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         configurationForConnecting connectingSceneSession: UISceneSession,
         options: UIScene.ConnectionOptions
     ) -> UISceneConfiguration {
+        AppLogger.startup.notice("AppDelegate configurationForConnecting")
         if let shortcutItem = options.shortcutItem {
             Task { @MainActor in
                 AppShortcutCenter.shared.requestShortcut(type: shortcutItem.type)
@@ -51,6 +60,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         performActionFor shortcutItem: UIApplicationShortcutItem,
         completionHandler: @escaping (Bool) -> Void
     ) {
+        AppLogger.startup.notice("AppDelegate performActionFor shortcut")
         Task { @MainActor in
             AppShortcutCenter.shared.requestShortcut(type: shortcutItem.type)
             completionHandler(true)

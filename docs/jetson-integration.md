@@ -19,6 +19,7 @@ The iOS app assumes these routes:
 ## Connectivity Contract
 - App checks Jetson availability by requesting the currently selected BallScope system endpoint.
 - If unavailable, app presents native connection hint overlay.
+- iOS local-network permission must be allowed for reliable access to `jetson.local`.
 
 ## Operational Recommendation
 - Keep Jetson hotspot SSID and hostname stable.

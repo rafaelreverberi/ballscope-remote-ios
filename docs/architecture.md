@@ -37,9 +37,11 @@ Result: app tab state stays consistent even when website changes route on its ow
 - The app probes the active BallScope system endpoint every 4 seconds.
 - On unreachable endpoint, web screens show a native “connect to Jetson Wi-Fi” overlay.
 - On successful probe, selected web route is loaded/refreshed.
+- The app declares `NSLocalNetworkUsageDescription` because probing `jetson.local` uses the user's local Wi-Fi network.
 
 ## Security / Transport
 - Local HTTP is enabled for web content in `Info.plist` via `NSAppTransportSecurity` keys.
+- Local network permission copy is generated into `Info.plist` for Jetson hotspot/LAN access.
 - Intended use is private local hotspot/LAN only.
 
 ## Data Boundaries

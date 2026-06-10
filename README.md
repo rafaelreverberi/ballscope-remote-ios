@@ -23,6 +23,7 @@ BallScope Remote is a native iOS companion app for the BallScope Jetson system. 
 - Includes Home actions for system reboot and shutdown (via Jetson API endpoints).
 - Lets you save multiple BallScope systems (host/port) and choose the active one.
 - Includes appearance mode settings (`System`, `Light`, `Dark`).
+- Declares local-network access for Jetson LAN/hotspot probing.
 
 ## Design Goals
 - Native-first iOS experience (not a plain browser shell).
@@ -41,6 +42,8 @@ BallScope Remote is a native iOS companion app for the BallScope Jetson system. 
 
 Default endpoint:
 - `http://jetson.local:8000`
+
+On first local-network access, iOS may ask for permission to find and connect to devices on the local network.
 
 Change endpoint in app:
 - Home -> `Settings` (add/select BallScope systems)
